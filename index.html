@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Plan de Comidas – Registro Clínico</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font-family: system-ui, Arial; margin:0; background:#f2f2f2 }
+header { background:#4CAF50; color:white; padding:15px; text-align:center }
+main { padding:10px }
+section {
+ background:white;
+ margin-bottom:15px;
+ padding:15px;
+ border-radius:8px;
+ transition: background 0.3s;
+}
+section.modo-edicion { background:#e6f5d0 }
+.hidden { display:none }
+button {
+ width:100%; padding:10px; margin-top:10px;
+ border:0; border-radius:6px; font-size:16px;
+}
+.save { background:#4CAF50; color:white }
+.secondary { background:#607D8B; color:white }
+.danger { background:#d32f2f; color:white }
+input, textarea, select {
+ width:100%; padding:8px; margin-top:4px;
+}
+textarea { min-height:50px }
+.subbloque { background:#f9f9f9; padding:10px; border-radius:6px }
+
+/* CALENDARIO */
+.calendario {
+ display:grid;
+ grid-template-columns: repeat(7,1fr);
+ gap:6px;
+ margin-top:10px;
+}
+.dia {
+ text-align:center;
+ padding:8px;
+ border-radius:6px;
+ cursor:pointer;
+}
+.dia.gris { background:#eee }
+.dia.verde { background:#c8e6c9 }
+.dia.amarillo { background:#fff9c4 }
+.dia.rojo { background:#ffcdd2 }
+.dia:hover { outline:2px solid #4CAF50 }
+
+#mensaje {
+ margin-top:10px;
+ display:none;
+ padding:10px;
+ border-radius:6px;
+ font-weight:600;
+}
+.ok { background:#e8f5e9 }
+</style>
+</head>
+
+<body>
+<header><h1>Plan de Comidas – Registro Clínico</h1></header>
+<main>
+
+<!-- PACIENTES -->
+<section>
+<label>Nuevo paciente</label>
+<input id="nuevoPaciente">
+<button class="save" onclick="crearPaciente()">Añadir paciente</button>
+
+<label>Paciente activo</label>
+<select id="pacienteSelect"></select>
+
+<button class="secondary" onclick="exportarCifrado()">🔐 Exportar cifrado</button>
+
+<label style="margin-top:10px">📥 Importar paciente (sustituye datos)</label>
+<input type="file" id="importInput" accept=".json">
+
+<button class="danger" onclick="eliminarPaciente()">🗑️ Eliminar paciente</button>
+</section>
+
+<!-- CALENDARIO -->
+<section id="resumen" class="hidden">
+<h3>📅 Resumen mensual</h3>
+<div class="calendario" id="calendario"></div>
+</section>
+
+<!-- FORMULARIO (INTOCADO) -->
+<section id="formRegistro" class="hidden">
+<label>Fecha</label>
+<input type="date" id="fecha">
+
+<label>Emoción</label>
+<select id="emocion">
+<option></option>
+<option>😌 Calma</option>
+<option>😊 Alegría</option>
+<option>😋 Satisfacción</option>
+<option>😴 Cansancio</option>
+<option>😟 Ansiedad</option>
+<option>😢 Tristeza</option>
+<option>😖 Culpa</option>
+<option>😠 Enfado</option>
+<option>😨 Miedo</option>
+</select>
+
+<textarea id="desayuno" placeholder="Desayuno"></textarea>
+<textarea id="almuerzo" placeholder="Almuerzo"></textarea>
+
+<div class="subbloque">
+<input id="comida_p1" placeholder="1º plato">
+<input id="comida_p2" placeholder="2º plato">
+<textarea id="comida_sobras" placeholder="Sobras comida"></textarea>
+
+<label>Al terminar la comida se quedó…</label>
+<select id="comida_saciedad">
+<option></option>
+<option value="hambre">Con hambre</option>
+<option value="saciado">Saciado</option>
+<option value="pasado">Se pasó</option>
+</select>
+</div>
+
+<textarea id="merienda" placeholder="Merienda"></textarea>
+
+<div class="subbloque">
+<input id="cena_p1" placeholder="1º plato">
+<input id="cena_p2" placeholder="2º plato">
+<textarea id="cena_sobras" placeholder="Sobras cena"></textarea>
+
+<label>Al terminar la cena se quedó…</label>
+<select id="cena_saciedad">
+<option></option>
+<option value="hambre">Con hambre</option>
+<option value="saciado">Saciado</option>
+<option value="pasado">Se pasó</option>
+</select>
+</div>
+
+<button class="save" id="btnGuardar">Guardar día</button>
+<div id="mensaje"></div>
+</section>
+
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const form=$("formRegistro");
+const keyPaciente=id=>`registros_paciente_${id}`;
+
+/* ---------- PACIENTES ---------- */
+function crearPaciente(){
+ const n=nuevoPaciente.value.trim();
+ if(!n) return;
+ const p=JSON.parse(localStorage.pacientes||"[]");
+ p.push({id:Date.now(),nombre:n});
+ localStorage.pacientes=JSON.stringify(p);
+ cargarPacientes();
+ nuevoPaciente.value="";
+}
+
+function cargarPacientes(){
+ pacienteSelect.innerHTML="<option></option>";
+ JSON.parse(localStorage.pacientes||"[]")
+  .forEach(p=>pacienteSelect.innerHTML+=`<option value="${p.id}">${p.nombre}</option>`);
+}
+
+pacienteSelect.onchange=()=>{
+ resetPacienteUI();
+ if(!pacienteSelect.value) return;
+ form.classList.remove("hidden");
+ $("resumen").classList.remove("hidden");
+ generarCalendario();
+};
+
+function obtenerRegistros(pid){
+ return JSON.parse(localStorage.getItem(keyPaciente(pid))||"[]");
+}
+
+function guardarRegistros(pid,data){
+ localStorage.setItem(keyPaciente(pid),JSON.stringify(data));
+}
+
+/* ---------- CALENDARIO ---------- */
+function generarCalendario(){
+ const cal=$("calendario");
+ cal.innerHTML="";
+ const pid=pacienteSelect.value;
+ const datos=obtenerRegistros(pid);
+ const hoy=new Date();
+ const y=hoy.getFullYear(), m=hoy.getMonth();
+ const dias=new Date(y,m+1,0).getDate();
+
+ for(let d=1;d<=dias;d++){
+  const f=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const r=datos.find(x=>x.fecha===f);
+  let c="gris";
+  if(r){
+   if(/Calma|Alegría|Satisfacción/.test(r.emocion)) c="verde";
+   else if(/Cansancio/.test(r.emocion)) c="amarillo";
+   else c="rojo";
+  }
+  cal.innerHTML+=`<div class="dia ${c}" onclick="irA('${f}')">${d}</div>`;
+ }
+}
+
+function irA(f){
+ fecha.value=f;
+ fecha.dispatchEvent(new Event("change"));
+}
+
+/* ---------- CARGA POR FECHA ---------- */
+fecha.onchange=()=>{
+ const pid=pacienteSelect.value;
+ const f=fecha.value;
+ const datos=obtenerRegistros(pid);
+ const r=datos.find(x=>x.fecha===f);
+
+ if(r){
+  form.classList.add("modo-edicion");
+  emocion.value=r.emocion;
+  desayuno.value=r.desayuno;
+  almuerzo.value=r.almuerzo;
+  merienda.value=r.merienda;
+  comida_p1.value=r.comida.p1;
+  comida_p2.value=r.comida.p2;
+  comida_sobras.value=r.comida.sobras;
+  comida_saciedad.value=r.comida.saciedad||"";
+  cena_p1.value=r.cena.p1;
+  cena_p2.value=r.cena.p2;
+  cena_sobras.value=r.cena.sobras;
+  cena_saciedad.value=r.cena.saciedad||"";
+ } else limpiarFormulario();
+};
+
+/* ---------- GUARDAR ---------- */
+btnGuardar.onclick=()=>{
+ const pid=pacienteSelect.value;
+ const f=fecha.value;
+ const datos=obtenerRegistros(pid);
+
+ const r={
+  fecha:f,
+  emocion:emocion.value,
+  desayuno:desayuno.value,
+  almuerzo:almuerzo.value,
+  merienda:merienda.value,
+  comida:{
+   p1:comida_p1.value,
+   p2:comida_p2.value,
+   sobras:comida_sobras.value,
+   saciedad:comida_saciedad.value
+  },
+  cena:{
+   p1:cena_p1.value,
+   p2:cena_p2.value,
+   sobras:cena_sobras.value,
+   saciedad:cena_saciedad.value
+  }
+ };
+
+ const i=datos.findIndex(x=>x.fecha===f);
+ if(i>=0) datos[i]=r; else datos.push(r);
+ guardarRegistros(pid,datos);
+ mensaje("✅ Datos guardados");
+ generarCalendario();
+};
+
+/* ---------- LIMPIEZA ---------- */
+function limpiarFormulario(){
+ form.classList.remove("modo-edicion");
+ ["desayuno","almuerzo","merienda",
+  "comida_p1","comida_p2","comida_sobras","comida_saciedad",
+  "cena_p1","cena_p2","cena_sobras","cena_saciedad"
+ ].forEach(id=>$(id).value="");
+ emocion.value="";
+}
+
+function resetPacienteUI(){
+ limpiarFormulario();
+ $("calendario").innerHTML="";
+ form.classList.add("hidden");
+ $("resumen").classList.add("hidden");
+}
+
+function mensaje(t){
+ const m=$("mensaje");
+ m.innerText=t;
+ m.className="ok";
+ m.style.display="block";
+ setTimeout(()=>m.style.display="none",3000);
+}
+
+/* ---------- EXPORTACIÓN CIFRADA ---------- */
+async function exportarCifrado(){
+ const pid=pacienteSelect.value;
+ if(!pid) return alert("Selecciona un paciente");
+ const pass=prompt("Contraseña para cifrar el fichero");
+ if(!pass) return;
+
+ const datos=obtenerRegistros(pid);
+ const enc=new TextEncoder();
+ const salt=crypto.getRandomValues(new Uint8Array(16));
+ const iv=crypto.getRandomValues(new Uint8Array(12));
+
+ const baseKey=await crypto.subtle.importKey(
+  "raw",enc.encode(pass),"PBKDF2",false,["deriveKey"]
+ );
+
+ const key=await crypto.subtle.deriveKey(
+  {name:"PBKDF2",salt,iterations:100000,hash:"SHA-256"},
+  baseKey,{name:"AES-GCM",length:256},false,["encrypt"]
+ );
+
+ const cifrado=await crypto.subtle.encrypt(
+  {name:"AES-GCM",iv},
+  key,
+  enc.encode(JSON.stringify(datos))
+ );
+
+ const out={
+  salt:Array.from(salt),
+  iv:Array.from(iv),
+  data:Array.from(new Uint8Array(cifrado))
+ };
+
+ const blob=new Blob([JSON.stringify(out)],{type:"application/json"});
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="paciente_cifrado.json";
+ a.click();
+}
+
+/* ---------- IMPORTAR (SUSTITUYE) ---------- */
+importInput.onchange=e=>{
+ const file=e.target.files[0];
+ if(!file) return;
+ const pid=pacienteSelect.value;
+ if(!pid){
+  alert("Selecciona el paciente al que quieres sustituir los datos");
+  importInput.value="";
+  return;
+ }
+
+ const reader=new FileReader();
+ reader.onload=()=>{
+  const data=JSON.parse(reader.result);
+  if(!Array.isArray(data.registros)){
+   alert("Fichero no válido");
+   return;
+  }
+  guardarRegistros(pid,data.registros);
+  limpiarFormulario();
+  generarCalendario();
+  alert("✅ Datos sustituidos correctamente");
+  importInput.value="";
+ };
+ reader.readAsText(file);
+};
+
+/* ---------- ELIMINAR PACIENTE ---------- */
+function eliminarPaciente(){
+ const pid=pacienteSelect.value;
+ if(!pid) return alert("Selecciona un paciente");
+ if(!confirm("⚠️ ¿Eliminar definitivamente este paciente y todos sus datos?")) return;
+
+ const pacientes=JSON.parse(localStorage.pacientes||"[]")
+  .filter(p=>p.id!=pid);
+ localStorage.pacientes=JSON.stringify(pacientes);
+ localStorage.removeItem(keyPaciente(pid));
+ cargarPacientes();
+ resetPacienteUI();
+ alert("Paciente eliminado");
+}
+
+cargarPacientes();
+</script>
+</body>
+</html>
+``

@@ -92,8 +92,8 @@ textarea { min-height:50px }
 <label>Fecha</label>
 <input type="date" id="fecha">
 
-<label>Emoción</label>
-<select id="emocion">
+<h2>⭐ Emoción al iniciar el día</h2>
+<select id="emocioninicio">
 <option></option>
 <option>😌 Calma</option>
 <option>😊 Alegría</option>
@@ -105,13 +105,26 @@ textarea { min-height:50px }
 <option>😠 Enfado</option>
 <option>😨 Miedo</option>
 </select>
-
+<h2>🥐 Desayuno</h2>
 <textarea id="desayuno" placeholder="Desayuno"></textarea>
+<h2>🥪 Almuerzo</h2>
 <textarea id="almuerzo" placeholder="Almuerzo"></textarea>
-
+<h3>🍽️ Comida</h3>
 <div class="subbloque">
 <input id="comida_p1" placeholder="1º plato">
 <input id="comida_p2" placeholder="2º plato">
+<label>Postre</label>
+<select id="comida_postre">
+  <option></option><option>nada</option><option>fruta</option><option>yogur</option><option>dulce</option>
+</select>
+<label>Pan</label>
+<label><select id="comida_pan">Pan <option></option><option>Si</option><option>No</option></label>
+</select>
+<label>Bebida</label>
+<select id="comida_bebida">
+  <option></option><option>agua</option><option>refresco</option>
+</select>
+<label>Sobras</label>
 <textarea id="comida_sobras" placeholder="Sobras comida"></textarea>
 
 <label>Al terminar la comida se quedó…</label>
@@ -119,15 +132,27 @@ textarea { min-height:50px }
 <option></option>
 <option value="hambre">Con hambre</option>
 <option value="saciado">Saciado</option>
-<option value="pasado">Se pasó</option>
+<option value="pasado">Exceso</option>
 </select>
 </div>
-
+<h2>🍪 Merienda</h2>
 <textarea id="merienda" placeholder="Merienda"></textarea>
-
+<h3>🌙 Cena</h3>
 <div class="subbloque">
 <input id="cena_p1" placeholder="1º plato">
 <input id="cena_p2" placeholder="2º plato">
+<label>Postre</label>
+<select id="cena_postre">
+  <option></option><option>nada</option><option>fruta</option><option>yogur</option><option>dulce</option>
+</select>
+<label>Pan</label>
+<label><select id="cena_pan">Pan <option></option><option>Si</option><option>No</option></label>
+</select>
+<label>Bebida</label>
+<select id="cena_bebida">
+  <option></option><option>agua</option><option>refresco</option>
+</select>
+<label>Sobras</label>
 <textarea id="cena_sobras" placeholder="Sobras cena"></textarea>
 
 <label>Al terminar la cena se quedó…</label>
@@ -135,9 +160,23 @@ textarea { min-height:50px }
 <option></option>
 <option value="hambre">Con hambre</option>
 <option value="saciado">Saciado</option>
-<option value="pasado">Se pasó</option>
+<option value="pasado">Exceso</option>
 </select>
 </div>
+
+<h2>⭐ Emoción al finalizar el día</h2>
+<select id="emocionfin">
+<option></option>
+<option>😌 Calma</option>
+<option>😊 Alegría</option>
+<option>😋 Satisfacción</option>
+<option>😴 Cansancio</option>
+<option>😟 Ansiedad</option>
+<option>😢 Tristeza</option>
+<option>😖 Culpa</option>
+<option>😠 Enfado</option>
+<option>😨 Miedo</option>
+</select>
 
 <button class="save" id="btnGuardar">Guardar día</button>
 <div id="mensaje"></div>
@@ -220,18 +259,25 @@ fecha.onchange=()=>{
 
  if(r){
   form.classList.add("modo-edicion");
-  emocion.value=r.emocion;
+  emocioninicio.value=r.emocion1;
   desayuno.value=r.desayuno;
   almuerzo.value=r.almuerzo;
   merienda.value=r.merienda;
   comida_p1.value=r.comida.p1;
   comida_p2.value=r.comida.p2;
+  comida_postre.value =r.comida.postre;
+  comida_pan.value =r.comida.pan;
+  comida_bebida.value =r.comida.bebida;
   comida_sobras.value=r.comida.sobras;
   comida_saciedad.value=r.comida.saciedad||"";
   cena_p1.value=r.cena.p1;
   cena_p2.value=r.cena.p2;
+  cena_postre.value =r.cena.postre;
+  cena_pan.value =r.cena.pan;
+  cena_bebida.value =r.cena.bebida;
   cena_sobras.value=r.cena.sobras;
   cena_saciedad.value=r.cena.saciedad||"";
+  emocionfin.value=r.emocion2;
  } else limpiarFormulario();
 };
 
@@ -243,22 +289,29 @@ btnGuardar.onclick=()=>{
 
  const r={
   fecha:f,
-  emocion:emocion.value,
+  emocion1:emocioninicio.value,
   desayuno:desayuno.value,
   almuerzo:almuerzo.value,
   merienda:merienda.value,
   comida:{
    p1:comida_p1.value,
    p2:comida_p2.value,
+   postre:comida_postre,
+   pan:comida_pan,
+   bebida:comida_bebida,
    sobras:comida_sobras.value,
    saciedad:comida_saciedad.value
   },
   cena:{
    p1:cena_p1.value,
    p2:cena_p2.value,
+   postre:cena_postre,
+   pan:cena_pan,
+   bebida:cena_bebida,
    sobras:cena_sobras.value,
    saciedad:cena_saciedad.value
-  }
+  },
+  emocion2:emocionfin.value,
  };
 
  const i=datos.findIndex(x=>x.fecha===f);
@@ -272,10 +325,11 @@ btnGuardar.onclick=()=>{
 function limpiarFormulario(){
  form.classList.remove("modo-edicion");
  ["desayuno","almuerzo","merienda",
-  "comida_p1","comida_p2","comida_sobras","comida_saciedad",
-  "cena_p1","cena_p2","cena_sobras","cena_saciedad"
+  "comida_p1","comida_p2","comida_postre","comida_bebida","comida_pan","comida_sobras","comida_saciedad",
+  "cena_p1","cena_p2","cena_postre","cena_pan","cena_bebida","cena_sobras","cena_saciedad"
  ].forEach(id=>$(id).value="");
- emocion.value="";
+ emocioninicio.value="";
+ emocionfin.value="";
 }
 
 function resetPacienteUI(){
@@ -379,4 +433,3 @@ cargarPacientes();
 </script>
 </body>
 </html>
-``
